@@ -3,25 +3,34 @@ const axeCore = require('axe-core');
 const fs = require('fs');
 const readline = require('readline');
 
+let siteName = '';
 let urlFile = '';
-let scanLevel = '';
+let scanLevel = 'aa'; // Defaults to aa
 let scanMobile = false;
-let resultFolder = '';
-let resultPrefix = '';
+let resultFolder = ''; // Default, will be timestamped
+let resultPrefix = 'scan_'; // Default
+let urlCounter = 0;
 
 let browser = null;
 let page = null;
 
 const appArgumentsDesc = `
-  Usage: node app-scanner.js 
+  Usage: node app-scanner.js -urlFile <path> -siteName <name> [-resultFolder <path>] [-level <value>] [-mobile]
   
   Arguments:
   
-  -urlFile <path>   (path of the file containing urls to scan)
-  -level [a|aa|aaa] (WCAG level that we are running against)
-  -mobile           (scan the mobile version of the site)
-  -resultFolder <path> (path to the folder where the results should be stored)
+  urlFile <path>   (path of the file containing urls to scan)
+  siteName <name>  (name provided for the crawling - should match by convention)
+  resultFolder <path> (path to the folder where the results should be stored)
+  level [value=a|aa|aaa] (WCAG level that we are running against)
+  mobile           (scan the mobile version of the site)
+  
 `;
+
+const setUpEnvironment = async () => {
+  browser = await launchPuppeteer();
+  page = await newBrowserPage(browser);
+};
 
 // Loop through an opened file and save all the URLs into memory.
 const goToPage = (page, pageUrl) => {
@@ -42,9 +51,9 @@ const injectAxeLib = page => {
   ${axeCore.source}
   // Run axe
   axe.configure({
-    rules: {
+    rules: [{
       tags: 'wcag2a'
-    }
+    }]
   })
   axe.run()
 `);
@@ -55,39 +64,7 @@ const writeResultsToFile = (jsonResult, fName) => {
   fs.writeFileSync(fName, data);
 };
 
-const cleanup = async (browser) => {
-  await browser.close();
-};
-
-const launchScanner = async() => {
-  // Read the target Url links file
-  try {
-    const readStream = fs.createReadStream(urlFile, {
-      encoding: 'utf-8'
-    });
-    const readLine = readline.createInterface(readStream);
-
-    await setUpEnvironment();
-
-    readLine.on('line', line => {
-      console.log('line is: ', line);
-      await runScanOnPage(line);
-    });
-
-    await cleanup(browser);
-
-  } catch (err) {
-    console.log('launchScanner error: ', err);
-  }
-};
-
-const setUpEnvironment = async()=> {
-  browser = await launchPuppeteer();
-  page = await newBrowserPage(browser);
-}
-
-const runScanOnPage = async (urlFromFile) => {
-  
+const runScanOnPage = async urlFromFile => {
   await goToPage(page, urlFromFile);
 
   // Inject and run axe-core
@@ -96,19 +73,36 @@ const runScanOnPage = async (urlFromFile) => {
   // Get the results from `axe.run()`.
   results = await handle.jsonValue();
 
-  
-
-  writeResultsToFile(results, 'google-scan.json');
+  // resultFolder must end with '/'
+  const resultFile = resultFolder + resultPrefix + urlCounter++ + '.json';
+  console.log(`Writing to file: ${resultFile}`);
+  writeResultsToFile(results, resultFile);
 
   await handle.dispose();
-  // Destroy the handle & return axe results.
+};
 
-  // await goToPage(page, 'https://www.yahoo.ca');
-  // handle = await injectAxeLib(page);
-  // results = await handle.jsonValue();
-  // writeResultsToFile(results, 'yahoo-scan.json');
+const cleanup = async browser => {
+  await browser.close();
+};
 
-  
+const launchScanner = async () => {
+  // Read the target Url links file
+  try {
+    await setUpEnvironment();
+    const readStream = fs.createReadStream(urlFile, {
+      encoding: 'utf-8'
+    });
+    const readLine = readline.createInterface(readStream);
+
+    for await (const line of readLine) {
+      console.log('line is: ', line);
+      await runScanOnPage(line);
+    }
+
+    await cleanup(browser);
+  } catch (err) {
+    console.log('launchScanner error: ', err);
+  }
 };
 
 // Get the command-line arguments
@@ -124,6 +118,10 @@ const runScanOnPage = async (urlFromFile) => {
 
     try {
       switch (val) {
+        case '-siteName':
+          siteName = getValue();
+          resultFolder = `./scans/${siteName}/`;
+          break;
         case '-urlFile':
           urlFile = getValue();
           break;
@@ -131,7 +129,11 @@ const runScanOnPage = async (urlFromFile) => {
           scanLevel = getValue();
           break;
         case '-resultFolder':
+          // Will override the default set.
           resultFolder = getValue();
+          if (!resultFolder.endsWith('/')) {
+            resultFolder += '/';
+          }
           break;
         case '-prefix':
           resultPrefix = getValue();
@@ -145,11 +147,22 @@ const runScanOnPage = async (urlFromFile) => {
     }
   });
 
-  if (scanLevel !== 'a' && scanLevel !== 'aa' && scanLevel !== 'aaa') {
+  if (
+    (scanLevel !== 'a' && scanLevel !== 'aa' && scanLevel !== 'aaa') ||
+    siteName === '' ||
+    urlFile === ''
+  ) {
     validArgs = false;
   }
   if (validArgs) {
-    launchScanner();
+    fs.promises
+      .mkdir(resultFolder + '/', { recursive: true })
+      .then(async () => {
+        launchScanner();
+      })
+      .catch(err => {
+        throw err;
+      });
   } else {
     console.log(appArgumentsDesc);
   }
