@@ -9,7 +9,8 @@ let scanMobile = false;
 let resultFolder = '';
 let resultPrefix = '';
 
-let validArgs = true;
+let browser = null;
+let page = null;
 
 const appArgumentsDesc = `
   Usage: node app-scanner.js 
@@ -22,11 +23,98 @@ const appArgumentsDesc = `
   -resultFolder <path> (path to the folder where the results should be stored)
 `;
 
+// Loop through an opened file and save all the URLs into memory.
+const goToPage = (page, pageUrl) => {
+  return page.goto(pageUrl);
+};
+
+const launchPuppeteer = () => {
+  return puppeteer.launch({ headless: false });
+};
+
+const newBrowserPage = browser => {
+  return browser.newPage();
+};
+
+const injectAxeLib = page => {
+  return page.evaluateHandle(`
+  // Inject axe source code
+  ${axeCore.source}
+  // Run axe
+  axe.configure({
+    rules: {
+      tags: 'wcag2a'
+    }
+  })
+  axe.run()
+`);
+};
+
+const writeResultsToFile = (jsonResult, fName) => {
+  const data = JSON.stringify(jsonResult);
+  fs.writeFileSync(fName, data);
+};
+
+const cleanup = async (browser) => {
+  await browser.close();
+};
+
+const launchScanner = async() => {
+  // Read the target Url links file
+  try {
+    const readStream = fs.createReadStream(urlFile, {
+      encoding: 'utf-8'
+    });
+    const readLine = readline.createInterface(readStream);
+
+    await setUpEnvironment();
+
+    readLine.on('line', line => {
+      console.log('line is: ', line);
+      await runScanOnPage(line);
+    });
+
+    await cleanup(browser);
+
+  } catch (err) {
+    console.log('launchScanner error: ', err);
+  }
+};
+
+const setUpEnvironment = async()=> {
+  browser = await launchPuppeteer();
+  page = await newBrowserPage(browser);
+}
+
+const runScanOnPage = async (urlFromFile) => {
+  
+  await goToPage(page, urlFromFile);
+
+  // Inject and run axe-core
+  let handle = await injectAxeLib(page);
+
+  // Get the results from `axe.run()`.
+  results = await handle.jsonValue();
+
+  
+
+  writeResultsToFile(results, 'google-scan.json');
+
+  await handle.dispose();
+  // Destroy the handle & return axe results.
+
+  // await goToPage(page, 'https://www.yahoo.ca');
+  // handle = await injectAxeLib(page);
+  // results = await handle.jsonValue();
+  // writeResultsToFile(results, 'yahoo-scan.json');
+
+  
+};
+
 // Get the command-line arguments
 (() => {
+  let validArgs = true;
   process.argv.forEach((val, index) => {
-    // console.log(`${index}: ${val}`);
-
     const getValue = () => {
       if (index + 1 < process.argv.length) {
         return process.argv[index + 1];
@@ -53,112 +141,16 @@ const appArgumentsDesc = `
       }
     } catch (err) {
       console.log('Error: ', err);
-      console.log(appArgumentsDesc);
       return;
-      //break;
     }
   });
 
-  if (scanLevel !== 'a' || scanLevel !== 'aa' || scanLevel !== 'aaa') {
+  if (scanLevel !== 'a' && scanLevel !== 'aa' && scanLevel !== 'aaa') {
     validArgs = false;
   }
-
   if (validArgs) {
     launchScanner();
+  } else {
+    console.log(appArgumentsDesc);
   }
 })();
-
-// Loop through an opened file and save all the URLs into memory.
-const runScanOnPage = (page, pageUrl) => {
-  return page.goto(pageUrl);
-};
-
-const launchPuppeteer = () => {
-  return puppeteer.launch({ headless: false });
-};
-
-const newBrowserPage = browser => {
-  return browser.newPage();
-};
-
-const injectAxeLib = page => {
-  return page.evaluateHandle(`
-  // Inject axe source code
-  ${axeCore.source}
-  // Run axe
-  axe.run()
-`);
-};
-
-const writeResultsToFile = jsonResult => {
-  const data = JSON.stringify(jsonResult);
-  // console.log(results);
-  fs.writeFileSync('test.json', data);
-};
-
-const launchScanner = async () => {
-  const browser = await launchPuppeteer(); //puppeteer.launch({ headless: false });
-  const page = await newBrowserPage(browser); //browser.newPage();
-
-  await runScanOnPage(page, 'https://www.google.ca'); //page.goto('https://www.google.ca');
-
-  // Inject and run axe-core
-  const handle = await injectAxeLib(page);
-
-  // await page.evaluateHandle(`
-  //     // Inject axe source code
-  //     ${axeCore.source}
-  //     // Run axe
-  //     axe.run()
-  // `);
-
-  // Get the results from `axe.run()`.
-  results = await handle.jsonValue();
-  // Destroy the handle & return axe results.
-  await handle.dispose();
-
-  await browser.close();
-
-  writeResultsToFile(results);
-  // const data = JSON.stringify(results);
-
-  // fs.writeFileSync('test.json', data);
-  //   fs.writeFile("test.txt", results, err => {
-  //     if (err) throw err;
-  //     console.log("The file has been saved!");
-  //   });
-};
-
-//////launchScanner();
-// (async () => {
-//   const browser = await launchPuppeteer(); //puppeteer.launch({ headless: false });
-//   const page = await newBrowserPage(browser); //browser.newPage();
-
-//   await runScanOnPage(page, 'https://www.google.ca'); //page.goto('https://www.google.ca');
-
-//   // Inject and run axe-core
-//   const handle = await injectAxeLib(page);
-
-//   // await page.evaluateHandle(`
-//   //     // Inject axe source code
-//   //     ${axeCore.source}
-//   //     // Run axe
-//   //     axe.run()
-//   // `);
-
-//   // Get the results from `axe.run()`.
-//   results = await handle.jsonValue();
-//   // Destroy the handle & return axe results.
-//   await handle.dispose();
-
-//   await browser.close();
-
-//   writeResultsToFile(results);
-//   // const data = JSON.stringify(results);
-
-//   // fs.writeFileSync('test.json', data);
-//   //   fs.writeFile("test.txt", results, err => {
-//   //     if (err) throw err;
-//   //     console.log("The file has been saved!");
-//   //   });
-// })();
