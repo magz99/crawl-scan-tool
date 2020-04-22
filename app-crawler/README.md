@@ -6,7 +6,8 @@
 
 # Running the crawler
 
-- from the `/crawler/spiders/` folder, run `crawl myspider -a filename=file-to-save-urls -a url=base-url-to-crawl`
+- from the `/crawler/spiders/` folder, run `scrapy crawl myspider -a filename=file-to-save-urls -a url=base-url-to-crawl`
+  -- `scrapy` may not be required if you have installed this globally on your machine
   -- The `filename` and `url` parameters are required
   -- filename indicates where the file containing the list of urls will be called. It will be created in the same folder.
   -- filename should not have an extension. A txt file with a timestamp will be created.
