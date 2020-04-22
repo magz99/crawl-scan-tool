@@ -1,3 +1,2 @@
 .DS_Store
-crawler/spiders/__pycache__/*
 *.pyc
