@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import scrapy
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
@@ -18,10 +19,17 @@ class MySpider(CrawlSpider):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.time_stamp = datetime.utcnow().isoformat().replace(':', '-')
+        self.folder_name = self.filename
         self.file_name = self.filename
+        self.base_path = '../../crawls/'
+        self.folder_path = self.base_path + self.folder_name
         self.start_urls = [self.url]
-        MySpider.allowed_domain = self.get_domain(self.url)
 
+        # Check and create folder where the crawl file will be written
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path)
+
+        MySpider.allowed_domain = self.get_domain(self.url)
         MySpider.rules = (
             Rule(LinkExtractor(allow_domains=MySpider.allowed_domain),
                  follow=True, callback='parse_item'),
@@ -33,5 +41,5 @@ class MySpider(CrawlSpider):
         url = response.url
         filename = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
         if(MySpider.allowed_domain in url):
-            with open(filename, 'a') as f:
+            with open(self.folder_path + '/' + filename, 'a') as f:
                 f.write(url + '\n')
