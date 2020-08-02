@@ -1,6 +1,9 @@
 import argparse
 import subprocess
 
+global PROJECT_PATH
+PROJECT_PATH = "/home/magz/workspace/crawl-scan-tool"
+
 def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         usage="%(prog)s -fp [FILE PREFIX] -url [URL TO PARSE]...",
@@ -19,6 +22,7 @@ def init_argparse() -> argparse.ArgumentParser:
     return parser
 
 def main() -> None:
+
     parser= init_argparse()
     args = parser.parse_args()
 
@@ -27,7 +31,15 @@ def main() -> None:
 # Executes the bash script which will run the Scrapy crawl command
 def execute_spider(fileName, urlToCrawl):
     print("executing the crawl spider on:", fileName, urlToCrawl)
-    subprocess.call(["./scripts/crawler-runner.sh", fileName, urlToCrawl])
+    subprocess.call([PROJECT_PATH + "/app-crawler/scripts/crawler-runner.sh", PROJECT_PATH, fileName, urlToCrawl])
+
+def on_after_complete(crawlFilePath, filePrefix, urlToCrawl):
+    print("crawl has completed")
+    # /home/magz/workspace/crawls/magz-test/magz-test_2020-08-02T01-19-56.619916.txt
+    
+    subprocess.call([PROJECT_PATH + "/app-crawler/scripts/scanner-runner.sh", crawlFilePath, filePrefix, urlToCrawl])
+
 
 if __name__ == "__main__":
     main()
+    
