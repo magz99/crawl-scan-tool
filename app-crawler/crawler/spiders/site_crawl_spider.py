@@ -24,7 +24,7 @@ class MySpider(CrawlSpider):
         self.time_stamp = datetime.utcnow().isoformat().replace(':', '-')
         self.folder_name = self.filename
         self.file_name = self.filename
-        self.base_path = '../../crawls/'
+        self.base_path = '/home/magz/workspace/crawls/'
         self.folder_path = self.base_path + self.folder_name
         self.start_urls = [self.url]
 
@@ -49,5 +49,6 @@ class MySpider(CrawlSpider):
 
     # After crawling completes
     def closed(self, reason):
-        post_crawl.on_after_complete()
+        filename = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
+        post_crawl.on_after_complete(self.folder_path + '/' + filename, self.file_name)
 

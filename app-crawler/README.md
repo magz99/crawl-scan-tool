@@ -2,7 +2,7 @@
 
 - make sure you have node installed. I am currently using v13.0.1
 - python 3.8 needs to be installed on your local machine (I used PIP to install)
-- scrapy third party library needs to be installed as well: https://scrapy.org
+- Scrapy third party library needs to be installed as well: https://scrapy.org
 
 # Running the crawler
 

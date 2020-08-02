@@ -1,5 +1,6 @@
 .DS_Store
 /app-scanner/node_modules
+/app-scanner/scans
 /app-crawler/node_modules
 *.pyc
 .idea/

@@ -24,9 +24,10 @@ def main() -> None:
 
     execute_spider(args.fileprefix, args.url)
 
+# Executes the bash script which will run the Scrapy crawl command
 def execute_spider(fileName, urlToCrawl):
     print("executing the crawl spider on:", fileName, urlToCrawl)
-    subprocess.call(["./scripts/runner.sh", fileName, urlToCrawl])
+    subprocess.call(["./scripts/crawler-runner.sh", fileName, urlToCrawl])
 
 if __name__ == "__main__":
     main()
