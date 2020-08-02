@@ -1,7 +1,6 @@
 .DS_Store
 /app-scanner/node_modules
 /app-crawler/node_modules
-/app-crawler/**/*.pyc
-/app-crawler/crawler/spiders/__pycache__/*.pyc
+*.pyc
 .idea/
 venv/
