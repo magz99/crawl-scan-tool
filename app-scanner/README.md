@@ -8,7 +8,7 @@
 - run `node scanner.js` from the app-scanner folder, it will produce a cmd output indicating parameters you should be using.
 
 - Typical run:
-  `node app-scanner.js -urlFile <path> -siteName <name>`
+  `node scanner.js -urlFile <path> -siteName <name>`
 - the urlFile path is the location of your file containing the website urls. ie. `./sites/rangle.io-links.txt`
 - the siteName is generally the website hostname, for easy identification of the crawls and scan results.
 

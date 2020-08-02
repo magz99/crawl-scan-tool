@@ -15,7 +15,7 @@ let browser = null;
 let page = null;
 
 const appArgumentsDesc = `
-  Usage: node app-scanner.js -urlFile <path> -siteName <name> [-resultFolder <path>] [-level <value>] [-mobile]
+  Usage: node scanner.js -urlFile <path> -siteName <name> [-resultFolder <path>] [-level <value>] [-mobile]
   
   Arguments:
   
