@@ -4,8 +4,8 @@ import os
 import scrapy
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-sys.path.append("./crawler/spiders")
-import s3_upload
+from helpers import post_crawl
+
 
 # How to run
 # scrapy crawl myspider -a filename=file-to-save-urls.txt -a url=base-url-to-crawl
@@ -47,5 +47,7 @@ class MySpider(CrawlSpider):
             with open(self.folder_path + '/' + filename, 'a') as f:
                 f.write(url + '\n')
 
+    # After crawling completes
     def closed(self, reason):
-        s3_upload.upload_to_s3()
+        post_crawl.on_after_complete()
+
