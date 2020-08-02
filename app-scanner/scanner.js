@@ -2,7 +2,6 @@ const puppeteer = require('puppeteer');
 const axeCore = require('axe-core');
 const fs = require('fs');
 const readline = require('readline');
-const { create } = require('domain');
 
 let siteName = '';
 let urlFile = '';
@@ -11,34 +10,25 @@ let scanMobile = false;
 let resultFolder = ''; // Default, will be timestamped
 let resultPrefix = 'scan_'; // Default
 let urlCounter = 0;
-let createMasterJSONOnly = false;
+let urlCrawled = '';
 
 let browser = null;
 let page = null;
 
-let masterObj = {
-  urlScanned: siteName,
-  totalViolations: 0,
-  scannedPages: [],
-  topViolations: {
-    critical: 0,
-    serious: 0,
-    moderate: 0,
-    minor: 0,
-  },
-};
+let masterObj = {};
 
 const appArgumentsDesc = `
-  Usage: node scanner.js -urlFile <path> -siteName <name> [-resultFolder <path>] [-level <value>] [-mobile]
+  Usage: node scanner.js -urlFile <path> -siteName <name> -urlCrawled <url> [-resultFolder <path>] [-level <value>] [-mobile]
   
   Arguments:
   
   urlFile <path>   (path of the file containing urls to scan)
   siteName <name>  (name provided for the crawling - should match by convention)
+  urlCrawled <url> (url of the site that was crawled, required for the results)
   resultFolder <path> (path to the folder where the results should be stored)
   level [value=a|aa|aaa] (WCAG level that we are running against)
   mobile           (scan the mobile version of the site)
-  
+
 `;
 
 const setUpEnvironment = async () => {
@@ -97,7 +87,7 @@ const runScanOnPage = async (urlFromFile) => {
 
 const cleanup = async (browser) => {
   await browser.close();
-  createMasterJSON();
+  createMasterJSON(resultFolder, 'results');
 };
 
 const readScanDir = async (scanFolderPath) => {
@@ -154,19 +144,15 @@ const mergeJSONData = (fileArray, scanFolderPath) => {
       });
     });
   });
-
-  //return true;
-  // Loop through all the files, and create a JSON array of results
 };
 
 const createMasterJSON = async (scanFolderPath, resultFileName) => {
-  masterObj.urlScanned = resultFileName;
   console.log('Creating master JSON file.');
   const fileArray = await readScanDir(scanFolderPath);
 
-  const temp2 = mergeJSONData(fileArray, scanFolderPath);
+  const mergedJSONData = mergeJSONData(fileArray, scanFolderPath);
 
-  Promise.all(temp2).then(() => {
+  Promise.all(mergedJSONData).then(() => {
     // Write the masterJSON file
     fs.writeFileSync(
       scanFolderPath + resultFileName + '.json',
@@ -208,12 +194,15 @@ const launchScanner = async () => {
 
     try {
       switch (val) {
-        case '-masterOnly':
-          createMasterJSONOnly = true;
-          siteName = 'magz-test';
-          resultFolder = `./scans/magz-test/2020-08-02T18-30-20.460Z/`;
-          urlFile =
-            '/home/magz/workspace/crawls/magz-test/magz-test_2020-08-02T01-19-56.619916.txt';
+        // case '-masterOnly':
+        //   createMasterJSONOnly = true;
+        //   siteName = 'magz-test';
+        //   resultFolder = `./scans/magz-test/2020-08-02T18-30-20.460Z/`;
+        //   urlFile =
+        //     '/home/magz/workspace/crawls/magz-test/magz-test_2020-08-02T01-19-56.619916.txt';
+        //   break;
+        case '-urlCrawled':
+          urlCrawled = getValue();
           break;
         case '-siteName':
           siteName = getValue();
@@ -247,26 +236,34 @@ const launchScanner = async () => {
   if (
     (scanLevel !== 'a' && scanLevel !== 'aa' && scanLevel !== 'aaa') ||
     siteName === '' ||
-    urlFile === ''
+    urlFile === '' ||
+    urlCrawled === ''
   ) {
     validArgs = false;
   }
   if (validArgs) {
-    if (createMasterJSONOnly) {
-      createMasterJSON(resultFolder, 'magz1');
-    } else {
-      // create a folder that is timestamped
-      const tstamp = new Date().toISOString().replace(/:/g, '-');
-      fs.promises
-        .mkdir(resultFolder + '/' + tstamp, { recursive: true })
-        .then(async () => {
-          resultFolder = resultFolder + '/' + tstamp + '/';
-          launchScanner();
-        })
-        .catch((err) => {
-          throw err;
-        });
-    }
+    masterObj = {
+      urlScanned: urlCrawled,
+      totalViolations: 0,
+      scannedPages: [],
+      topViolations: {
+        critical: 0,
+        serious: 0,
+        moderate: 0,
+        minor: 0,
+      },
+    };
+    // create a folder that is timestamped
+    const tstamp = new Date().toISOString().replace(/:/g, '-');
+    fs.promises
+      .mkdir(resultFolder + '/' + tstamp, { recursive: true })
+      .then(async () => {
+        resultFolder = resultFolder + '/' + tstamp + '/';
+        launchScanner();
+      })
+      .catch((err) => {
+        throw err;
+      });
   } else {
     console.log(appArgumentsDesc);
   }
