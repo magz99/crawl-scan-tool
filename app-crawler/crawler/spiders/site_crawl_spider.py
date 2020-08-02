@@ -49,5 +49,6 @@ class MySpider(CrawlSpider):
 
     # After crawling completes
     def closed(self, reason):
-        post_crawl.on_after_complete()
+        filename = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
+        post_crawl.on_after_complete(self.folder_path + '/' + filename)
 
