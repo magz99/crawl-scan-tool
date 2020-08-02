@@ -42,3 +42,4 @@ def on_after_complete(crawlFilePath, filePrefix, urlToCrawl):
 
 if __name__ == "__main__":
     main()
+    
