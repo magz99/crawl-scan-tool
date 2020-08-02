@@ -4,7 +4,7 @@ import os
 import scrapy
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-from helpers import post_crawl
+from main import on_after_complete
 
 
 # How to run
@@ -50,5 +50,5 @@ class MySpider(CrawlSpider):
     # After crawling completes
     def closed(self, reason):
         filename = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
-        post_crawl.on_after_complete(self.folder_path + '/' + filename, self.file_name)
+        on_after_complete(self.folder_path + '/' + filename, self.file_name, self.url)
 

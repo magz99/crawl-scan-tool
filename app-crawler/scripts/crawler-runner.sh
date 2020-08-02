@@ -1,3 +1,3 @@
 #!/bin/bash
-cd ../crawler/spiders
-scrapy crawl myspider -a filename=$1 -a url=$2
+cd $1/app-crawler/crawler/spiders
+scrapy crawl myspider -a filename=$2 -a url=$3
