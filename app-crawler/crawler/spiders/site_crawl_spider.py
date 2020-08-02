@@ -1,8 +1,11 @@
 from datetime import datetime
+import sys
 import os
 import scrapy
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
+sys.path.append("./crawler/spiders")
+import s3_upload
 
 # How to run
 # scrapy crawl myspider -a filename=file-to-save-urls.txt -a url=base-url-to-crawl
@@ -43,3 +46,6 @@ class MySpider(CrawlSpider):
         if(MySpider.allowed_domain in url):
             with open(self.folder_path + '/' + filename, 'a') as f:
                 f.write(url + '\n')
+
+    def closed(self, reason):
+        s3_upload.upload_to_s3()
