@@ -6,3 +6,4 @@
 .idea/
 venv/
 **/*.pyc
+app-scanner/scripts/aws-s3.sh
