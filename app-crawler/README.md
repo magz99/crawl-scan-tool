@@ -19,7 +19,6 @@
   -- writing test cases?
   -- cleaning up the code a bit more
   -- need to use best practices for Python.
-  -- create a proper main python method to handle the cmd line args
   -- testing the performance with really large websites (we could try on the microsoft.com site?)
   -- ability to specify the `path` to where the file will be saved
   -- logging

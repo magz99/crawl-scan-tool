@@ -2,12 +2,16 @@ const puppeteer = require('puppeteer');
 const axeCore = require('axe-core');
 const fs = require('fs');
 const readline = require('readline');
+const shell = require('shelljs');
+
+const PROJECT_PATH = '/home/magz/workspace/crawl-scan-tool/app-scanner';
 
 let siteName = '';
 let urlFile = '';
 let scanLevel = 'aa'; // Defaults to aa
-let scanMobile = false;
-let resultFolder = ''; // Default, will be timestamped
+let scanMobile = false; // TODO: Implement this feature
+let resultFolder = ''; // Default, will be a timestamp
+let resultFolderPath = ''; // absolute path to timestamped folder
 let resultPrefix = 'scan_'; // Default
 let urlCounter = 0;
 let urlCrawled = '';
@@ -78,7 +82,7 @@ const runScanOnPage = async (urlFromFile) => {
   results = await handle.jsonValue();
 
   // resultFolder must end with '/'
-  const resultFile = resultFolder + resultPrefix + urlCounter++ + '.json';
+  const resultFile = `${resultFolderPath}${resultFolder}/${resultPrefix}${urlCounter++}.json`;
   console.log(`Writing to file: ${resultFile}`);
   writeResultsToFile(results, resultFile);
 
@@ -87,7 +91,7 @@ const runScanOnPage = async (urlFromFile) => {
 
 const cleanup = async (browser) => {
   await browser.close();
-  createMasterJSON(resultFolder, 'results');
+  createMasterJSON(`${resultFolderPath}${resultFolder}/`, 'results');
 };
 
 const readScanDir = async (scanFolderPath) => {
@@ -154,9 +158,17 @@ const createMasterJSON = async (scanFolderPath, resultFileName) => {
 
   Promise.all(mergedJSONData).then(() => {
     // Write the masterJSON file
-    fs.writeFileSync(
+    fs.writeFile(
       scanFolderPath + resultFileName + '.json',
-      JSON.stringify(masterObj)
+      JSON.stringify(masterObj),
+      (err) => {
+        if (err) {
+          console.log('Error: Master JSON file not created!');
+          console.log(err);
+        } else {
+          onScanningCompleted();
+        }
+      }
     );
   });
 };
@@ -181,6 +193,16 @@ const launchScanner = async () => {
   }
 };
 
+// Function called when the scanning is completed and the master file
+// has been created.
+// Do any post-scanning stuff here.
+const onScanningCompleted = () => {
+  // execute shell script
+  const scriptCmd = `${PROJECT_PATH}/scripts/aws-s3.sh "${resultFolderPath}" "${resultFolder}" "${siteName}"`;
+  shell.exec(scriptCmd);
+};
+
+let testFeat = false;
 // Get the command-line arguments
 (() => {
   let validArgs = true;
@@ -194,19 +216,22 @@ const launchScanner = async () => {
 
     try {
       switch (val) {
-        // case '-masterOnly':
-        //   createMasterJSONOnly = true;
-        //   siteName = 'magz-test';
-        //   resultFolder = `./scans/magz-test/2020-08-02T18-30-20.460Z/`;
-        //   urlFile =
-        //     '/home/magz/workspace/crawls/magz-test/magz-test_2020-08-02T01-19-56.619916.txt';
-        //   break;
+        case '-masterOnly':
+          testFeat = true;
+          siteName = 'magz-test';
+          resultFolderPath = `${PROJECT_PATH}/scans/magz-test/`;
+          resultFolder = '2020-08-02T18-30-20.460Z';
+          urlCrawled = 'https://www.magzb.ca';
+          urlFile =
+            '/home/magz/workspace/crawls/magz-test/magz-test_2020-08-02T01-19-56.619916.txt';
+          break;
         case '-urlCrawled':
           urlCrawled = getValue();
           break;
         case '-siteName':
           siteName = getValue();
-          resultFolder = `./scans/${siteName}/`;
+          resultFolderPath = `${PROJECT_PATH}/scans/${siteName}/`;
+          // resultFolder = `${PROJECT_PATH}/scans/${siteName}/`;
           break;
         case '-urlFile':
           urlFile = getValue();
@@ -214,18 +239,20 @@ const launchScanner = async () => {
         case '-level':
           scanLevel = getValue();
           break;
-        case '-resultFolder':
+        case '-siteFolder':
           // Will override the default set.
-          resultFolder = getValue();
-          if (!resultFolder.endsWith('/')) {
-            resultFolder += '/';
+          let siteFolder = getValue();
+          if (!siteFolder.endsWith('/')) {
+            siteFolder += '/';
           }
+          resultFolderPath = `${PROJECT_PATH}/scans/${siteFolder}`;
           break;
         case '-prefix':
           resultPrefix = getValue();
           break;
         case '-mobile':
           scanMobile = true;
+          break;
       }
     } catch (err) {
       console.log('Error: ', err);
@@ -242,28 +269,35 @@ const launchScanner = async () => {
     validArgs = false;
   }
   if (validArgs) {
-    masterObj = {
-      urlScanned: urlCrawled,
-      totalViolations: 0,
-      scannedPages: [],
-      topViolations: {
-        critical: 0,
-        serious: 0,
-        moderate: 0,
-        minor: 0,
-      },
-    };
-    // create a folder that is timestamped
-    const tstamp = new Date().toISOString().replace(/:/g, '-');
-    fs.promises
-      .mkdir(resultFolder + '/' + tstamp, { recursive: true })
-      .then(async () => {
-        resultFolder = resultFolder + '/' + tstamp + '/';
-        launchScanner();
-      })
-      .catch((err) => {
-        throw err;
-      });
+    if (testFeat) {
+      onScanningCompleted();
+    } else {
+      // Initialize the master JSON which will contain a summary of counts,
+      // and the mapping of sitepage url -> result file JSON.
+      masterObj = {
+        urlScanned: urlCrawled,
+        totalViolations: 0,
+        scannedPages: [],
+        topViolations: {
+          critical: 0,
+          serious: 0,
+          moderate: 0,
+          minor: 0,
+        },
+      };
+      // create a folder that is timestamped
+      const tstamp = new Date().toISOString().replace(/:/g, '-');
+      resultFolder = tstamp;
+      fs.promises
+        .mkdir(resultFolderPath + tstamp, { recursive: true })
+        .then(async () => {
+          // resultFolderPath = resultFolder; // + tstamp + '/';
+          launchScanner();
+        })
+        .catch((err) => {
+          throw err;
+        });
+    }
   } else {
     console.log(appArgumentsDesc);
   }
