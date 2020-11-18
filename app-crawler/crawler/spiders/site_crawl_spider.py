@@ -23,6 +23,7 @@ class MySpider(CrawlSpider):
         self.file_name = self.filename
         self.base_path = '../../crawls/'
         self.folder_path = self.base_path + self.folder_name
+        self.file_name_to_save_in = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
         self.start_urls = [self.url]
 
         # Check and create folder where the crawl file will be written
@@ -39,7 +40,7 @@ class MySpider(CrawlSpider):
 
     def parse_item(self, response):
         url = response.url
-        filename = ''.join([self.file_name,'_',self.time_stamp,'.txt'])
+        # filename =
         if(MySpider.allowed_domain in url):
-            with open(self.folder_path + '/' + filename, 'a') as f:
+            with open(self.folder_path + '/' + self.file_name_to_save_in, 'a') as f:
                 f.write(url + '\n')
