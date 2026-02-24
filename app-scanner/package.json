@@ -4,7 +4,7 @@
   "description": "Puppeteer and axe tool",
   "main": "example.js",
   "dependencies": {
-    "puppeteer": "^2.0.0"
+    "puppeteer": "^24.37.5"
   },
   "devDependencies": {
     "axe-core": "^3.4.0"
